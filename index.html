@@ -781,6 +781,8 @@ function trimMbz(srcFiles, opts) {
         randomCategoryIds.add(id);
       for (const id of extractAll(/"questioncategoryid":"(\d+)"/g, qx))
         randomCategoryIds.add(id);
+      for (const id of extractAll(/"questioncategoryid":(\d+)/g, qx))
+        randomCategoryIds.add(id);
       for (const id of extractAll(/"cat":"(\d+),\d+"/g, qx))
         randomCategoryIds.add(id);
     }
