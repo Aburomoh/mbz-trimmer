@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBZ Trimmer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #f8fafc;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 2rem;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  /* ── Drop zone ── */
+  .dropzone {
+    border: 2px dashed #334155;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #1e293b;
+    position: relative;
+  }
+
+  .dropzone:hover, .dropzone.dragover {
+    border-color: #3b82f6;
+    background: #1e3a5f;
+  }
+
+  .dropzone-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    display: block;
+  }
+
+  .dropzone-text {
+    font-size: 0.95rem;
+    color: #94a3b8;
+  }
+
+  .dropzone-text strong {
+    color: #3b82f6;
+    cursor: pointer;
+  }
+
+  .dropzone-hint {
+    font-size: 0.75rem;
+    color: #475569;
+    margin-top: 0.5rem;
+  }
+
+  .dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* ── File selected state ── */
+  .file-info {
+    display: none;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-top: 1rem;
+  }
+
+  .file-info.visible { display: block; }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .file-icon { font-size: 1.5rem; flex-shrink: 0; }
+
+  .file-details { flex: 1; min-width: 0; }
+
+  .file-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #f1f5f9;
+  }
+
+  .file-size {
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+
+  .file-remove {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.25rem;
+    line-height: 1;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+
+  .file-remove:hover { color: #ef4444; background: #1c1c1c; }
+
+  /* ── Options ── */
+  .options {
+    display: none;
+    margin-top: 1rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+  }
+
+  .options.visible { display: block; }
+
+  .option-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    cursor: pointer;
+  }
+
+  .option-row input[type="checkbox"] {
+    margin-top: 0.2rem;
+    accent-color: #3b82f6;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+
+  .option-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #f1f5f9;
+  }
+
+  .option-desc {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+    line-height: 1.4;
+  }
+
+  /* ── Trim button ── */
+  .trim-btn {
+    display: none;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #3b82f6;
+    color: white;
+  }
+
+  .trim-btn.visible { display: block; }
+  .trim-btn:hover:not(:disabled) { background: #2563eb; }
+  .trim-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── Progress ── */
+  .progress {
+    display: none;
+    margin-top: 1rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .progress.visible { display: block; }
+
+  .progress-bar-track {
+    width: 100%;
+    height: 6px;
+    background: #334155;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: #3b82f6;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  .progress-bar.indeterminate {
+    width: 30%;
+    animation: slide 1.2s ease-in-out infinite;
+  }
+
+  @keyframes slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
+  .progress-log {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    max-height: 160px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+
+  .progress-log .step { color: #3b82f6; }
+  .progress-log .done { color: #22c55e; }
+  .progress-log .num  { color: #f59e0b; }
+
+  /* ── Result ── */
+  .result {
+    display: none;
+    margin-top: 1rem;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .result.visible { display: block; }
+  .result.success { background: #052e16; border: 1px solid #166534; }
+  .result.error   { background: #450a0a; border: 1px solid #991b1b; }
+
+  .result-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+  .result-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+
+  .result.success .result-title { color: #4ade80; }
+  .result.error .result-title   { color: #f87171; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    text-align: left;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+
+  .stat-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .stat-value .old { color: #64748b; text-decoration: line-through; }
+  .stat-value .new { color: #4ade80; }
+  .stat-value .arrow { color: #475569; margin: 0 0.25rem; }
+
+  .open-btn {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #22c55e;
+    color: #052e16;
+    transition: all 0.15s;
+  }
+
+  .open-btn:hover { background: #16a34a; }
+
+  .reset-btn {
+    display: inline-block;
+    margin-top: 0.5rem;
+    margin-left: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: #94a3b8;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover { border-color: #64748b; color: #e2e8f0; }
+
+  .error-msg {
+    font-size: 0.8rem;
+    color: #fca5a5;
+    margin-top: 0.5rem;
+    font-family: monospace;
+    word-break: break-all;
+  }
+
+  /* ── Analytics panel ── */
+  .analytics-btn {
+    display: inline-block;
+    margin-top: 0.5rem;
+    margin-left: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: #94a3b8;
+    transition: all 0.15s;
+  }
+
+  .analytics-btn:hover { border-color: #64748b; color: #e2e8f0; }
+
+  .analytics {
+    display: none;
+    margin-top: 1rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: left;
+  }
+
+  .analytics.visible { display: block; }
+
+  .analytics h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 0.75rem;
+  }
+
+  .breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+
+  .breakdown-table th {
+    text-align: left;
+    color: #64748b;
+    font-weight: 500;
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid #334155;
+  }
+
+  .breakdown-table td {
+    padding: 0.3rem 0.5rem;
+    color: #cbd5e1;
+  }
+
+  .breakdown-table tr.removed td { color: #f87171; }
+  .breakdown-table tr.kept td { color: #94a3b8; }
+
+  .breakdown-table .sz { text-align: right; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+
+  .breakdown-bar {
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    margin-bottom: 0.75rem;
+    background: #334155;
+  }
+
+  .breakdown-bar div {
+    height: 100%;
+    transition: width 0.4s;
+  }
+
+  .bar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.72rem;
+    color: #94a3b8;
+  }
+
+  .bar-legend span::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+  }
+
+  .bar-legend .lg-questions::before { background: #3b82f6; }
+  .bar-legend .lg-files::before    { background: #8b5cf6; }
+  .bar-legend .lg-content::before  { background: #f59e0b; }
+  .bar-legend .lg-activities::before { background: #22c55e; }
+  .bar-legend .lg-other::before    { background: #64748b; }
+  .bar-legend .lg-removed::before  { background: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>MBZ Trimmer</h1>
+  <p class="subtitle">Drop a Moodle .mbz backup to trim its question bank</p>
+
+  <div class="dropzone" id="dropzone">
+    <span class="dropzone-icon">&#128230;</span>
+    <div class="dropzone-text">Drag &amp; drop your <strong>.mbz</strong> file here</div>
+    <div class="dropzone-hint">or click to browse</div>
+    <input type="file" id="fileInput" accept=".mbz,.tar.gz,.gz">
+  </div>
+
+  <div class="file-info" id="fileInfo">
+    <div class="file-row">
+      <span class="file-icon">&#128196;</span>
+      <div class="file-details">
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+      <button class="file-remove" id="fileRemove" title="Remove">&times;</button>
+    </div>
+  </div>
+
+  <div class="options" id="options">
+    <label class="option-row">
+      <input type="checkbox" id="stripCheck" checked>
+      <div>
+        <div class="option-label">Strip for sharing</div>
+        <div class="option-desc">
+          Remove groups, enrolments, blocks, and other course-specific data
+          that can pollute the target course on restore.
+        </div>
+      </div>
+    </label>
+  </div>
+
+  <button class="trim-btn" id="trimBtn">Trim Backup</button>
+
+  <div class="progress" id="progress">
+    <div class="progress-bar-track">
+      <div class="progress-bar indeterminate" id="progressBar"></div>
+    </div>
+    <div class="progress-log" id="progressLog"></div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-icon" id="resultIcon"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="stats" id="resultStats"></div>
+    <div id="resultActions"></div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="analytics" id="analytics"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// GZIP UTILITIES (Compression Streams API — built into modern browsers)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function gunzip(data) {
+  const ds = new DecompressionStream('gzip');
+  const stream = new Blob([data]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function gzip(data) {
+  const cs = new CompressionStream('gzip');
+  const stream = new Blob([data]).stream().pipeThrough(cs);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAR UTILITIES (minimal USTAR parser/creator)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const textDec = new TextDecoder();
+const textEnc = new TextEncoder();
+
+function tarReadStr(buf, off, len) {
+  let end = off;
+  while (end < off + len && buf[end] !== 0) end++;
+  return textDec.decode(buf.subarray(off, end));
+}
+
+function tarReadOctal(buf, off, len) {
+  const s = tarReadStr(buf, off, len).trim();
+  return s ? parseInt(s, 8) || 0 : 0;
+}
+
+function parseTar(buffer) {
+  const files = new Map();
+  const view = new Uint8Array(buffer);
+  let offset = 0;
+
+  while (offset + 512 <= view.length) {
+    const header = view.subarray(offset, offset + 512);
+    // Check for zero block (end of archive)
+    let allZero = true;
+    for (let i = 0; i < 512; i++) { if (header[i] !== 0) { allZero = false; break; } }
+    if (allZero) break;
+
+    const name = tarReadStr(header, 0, 100);
+    const size = tarReadOctal(header, 124, 12);
+    const typeflag = header[156];
+    const prefix = tarReadStr(header, 345, 155);
+
+    let fullPath = prefix ? prefix + '/' + name : name;
+    // Normalize: strip leading ./
+    fullPath = fullPath.replace(/^\.\//, '');
+
+    offset += 512;
+
+    // Regular file (typeflag '0' or NUL)
+    if ((typeflag === 48 || typeflag === 0) && size > 0 && fullPath) {
+      files.set(fullPath, new Uint8Array(view.buffer, view.byteOffset + offset, size).slice());
+    }
+
+    // Advance past file data (padded to 512-byte blocks)
+    offset += Math.ceil(size / 512) * 512;
+  }
+
+  return files;
+}
+
+function tarWriteStr(buf, off, len, str) {
+  const bytes = textEnc.encode(str);
+  for (let i = 0; i < Math.min(bytes.length, len); i++) buf[off + i] = bytes[i];
+}
+
+function tarWriteOctal(buf, off, len, val) {
+  const s = val.toString(8);
+  const padded = s.padStart(len - 1, '0');
+  tarWriteStr(buf, off, len, padded);
+}
+
+function tarChecksum(header) {
+  // Treat checksum field (148-155) as spaces for calculation
+  let sum = 0;
+  for (let i = 0; i < 512; i++) {
+    sum += (i >= 148 && i < 156) ? 32 : header[i];
+  }
+  return sum;
+}
+
+function createTarEntry(path, data, isDir) {
+  const header = new Uint8Array(512);
+
+  // Handle long paths with prefix field
+  let name = path;
+  let prefix = '';
+  if (name.length > 100) {
+    const slashIdx = name.lastIndexOf('/', 155);
+    if (slashIdx > 0) {
+      prefix = name.substring(0, slashIdx);
+      name = name.substring(slashIdx + 1);
+    }
+  }
+
+  tarWriteStr(header, 0, 100, name);
+  tarWriteOctal(header, 100, 8, isDir ? 0o755 : 0o644);  // mode
+  tarWriteOctal(header, 108, 8, 0);   // uid
+  tarWriteOctal(header, 116, 8, 0);   // gid
+  tarWriteOctal(header, 124, 12, isDir ? 0 : data.length); // size
+  tarWriteOctal(header, 136, 12, Math.floor(Date.now() / 1000)); // mtime
+  header[156] = isDir ? 53 : 48;      // typeflag: '5' dir, '0' file
+  tarWriteStr(header, 257, 6, 'ustar');  // magic
+  tarWriteStr(header, 263, 2, '00');     // version
+  if (prefix) tarWriteStr(header, 345, 155, prefix);
+
+  // Calculate and write checksum
+  const cksum = tarChecksum(header);
+  const cks = cksum.toString(8).padStart(6, '0') + '\0 ';
+  tarWriteStr(header, 148, 8, cks);
+
+  if (isDir || !data || data.length === 0) return [header];
+
+  // Pad file data to 512-byte boundary
+  const padLen = (512 - (data.length % 512)) % 512;
+  const padded = new Uint8Array(data.length + padLen);
+  padded.set(data);
+  return [header, padded];
+}
+
+function createTar(files) {
+  const blocks = [];
+
+  // Collect all unique directories
+  const dirs = new Set();
+  for (const p of files.keys()) {
+    const parts = p.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      dirs.add(parts.slice(0, i).join('/') + '/');
+    }
+  }
+
+  // Write directory entries
+  for (const dir of [...dirs].sort()) {
+    for (const b of createTarEntry('./' + dir, null, true)) blocks.push(b);
+  }
+
+  // Write file entries (sorted for deterministic output)
+  for (const path of [...files.keys()].sort()) {
+    for (const b of createTarEntry('./' + path, files.get(path), false)) blocks.push(b);
+  }
+
+  // Two 512-byte zero blocks (end of archive)
+  blocks.push(new Uint8Array(1024));
+
+  // Concatenate all blocks
+  const totalLen = blocks.reduce((s, b) => s + b.length, 0);
+  const result = new Uint8Array(totalLen);
+  let off = 0;
+  for (const b of blocks) { result.set(b, off); off += b.length; }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IN-MEMORY FILE SYSTEM HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function readText(files, path) {
+  const data = files.get(path);
+  if (!data) throw new Error('File not found: ' + path);
+  return textDec.decode(data);
+}
+
+function writeText(files, path, text) {
+  files.set(path, textEnc.encode(text));
+}
+
+function listDir(files, dir) {
+  if (!dir.endsWith('/')) dir += '/';
+  const items = new Set();
+  for (const p of files.keys()) {
+    if (p.startsWith(dir)) {
+      const rest = p.substring(dir.length);
+      const slash = rest.indexOf('/');
+      items.add(slash === -1 ? rest : rest.substring(0, slash));
+    }
+  }
+  return [...items];
+}
+
+function removeDir(files, dir) {
+  if (!dir.endsWith('/')) dir += '/';
+  for (const p of [...files.keys()]) {
+    if (p.startsWith(dir) || p === dir.slice(0, -1)) files.delete(p);
+  }
+}
+
+function hasPath(files, path) {
+  if (files.has(path)) return true;
+  // Check if it's a directory (any key starts with path/)
+  const prefix = path.endsWith('/') ? path : path + '/';
+  for (const p of files.keys()) { if (p.startsWith(prefix)) return true; }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRIM ENGINE (ported from mbz_engine.js)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function extractAll(regex, text, group) {
+  if (group === undefined) group = 1;
+  const results = [];
+  let m;
+  regex.lastIndex = 0;
+  while ((m = regex.exec(text)) !== null) results.push(m[group]);
+  return results;
+}
+
+function categorizePath(path) {
+  if (path === 'questions.xml') return 'questions';
+  if (path === 'files.xml') return 'files_xml';
+  if (path.startsWith('files/')) return 'content';
+  if (path.startsWith('activities/')) return 'activities';
+  return 'other';
+}
+
+const CATEGORY_LABELS = {
+  questions: 'Question bank (questions.xml)',
+  files_xml: 'File index (files.xml)',
+  content: 'Content files (images, attachments)',
+  activities: 'Quiz activities',
+  other: 'Other (groups, roles, backup metadata)',
+};
+
+const CATEGORY_COLORS = {
+  questions: '#3b82f6',
+  files_xml: '#8b5cf6',
+  content: '#f59e0b',
+  activities: '#22c55e',
+  other: '#64748b',
+};
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+
+function trimMbz(srcFiles, opts) {
+  const stripForSharing = opts && opts.strip || false;
+  const log = [];
+  const push = (msg) => log.push(msg);
+
+  try {
+    // ── Snapshot input sizes for analytics ──
+    const inputSizes = {};
+    for (const [path, data] of srcFiles) {
+      const cat = categorizePath(path);
+      inputSizes[cat] = (inputSizes[cat] || 0) + data.length;
+    }
+
+    // ── Discover quiz activities ──
+    push('Discovering quiz activities...');
+    const backupXml = readText(srcFiles, 'moodle_backup.xml');
+    const quizDirs = extractAll(/<directory>(activities\/quiz_\d+)<\/directory>/g, backupXml);
+
+    if (quizDirs.length === 0) {
+      push('No quiz activities found — nothing to trim.');
+      return { success: true, log, stats: null, noQuizzes: true };
+    }
+
+    push('Found ' + quizDirs.length + ' quiz(zes)');
+
+    // ── Extract referenced question bank entries and categories ──
+    push('Analyzing question references...');
+    const directEntryIds = new Set();
+    const randomCategoryIds = new Set();
+
+    for (const qdir of quizDirs) {
+      const qpath = qdir + '/quiz.xml';
+      if (!srcFiles.has(qpath)) continue;
+      const qx = readText(srcFiles, qpath);
+
+      for (const id of extractAll(/<questionbankentryid>(\d+)<\/questionbankentryid>/g, qx))
+        directEntryIds.add(id);
+      for (const id of extractAll(/"values":\["(\d+)"\]/g, qx))
+        randomCategoryIds.add(id);
+      for (const id of extractAll(/"values":\[(\d+)\]/g, qx))
+        randomCategoryIds.add(id);
+      for (const id of extractAll(/"questioncategoryid":"(\d+)"/g, qx))
+        randomCategoryIds.add(id);
+      for (const id of extractAll(/"cat":"(\d+),\d+"/g, qx))
+        randomCategoryIds.add(id);
+    }
+
+    push('  ' + directEntryIds.size + ' direct refs, ' + randomCategoryIds.size + ' random categories');
+
+    if (directEntryIds.size === 0 && randomCategoryIds.size === 0) {
+      push('No question references found. Nothing to trim.');
+      return { success: true, log, stats: null, noQuizzes: true };
+    }
+
+    // ── Parse questions.xml ──
+    push('Scanning question bank...');
+    const questionsRaw = readText(srcFiles, 'questions.xml');
+    const qLines = questionsRaw.split('\n');
+
+    const categoryParent = new Map();
+    const categoryContext = new Map();
+    const entryToCategory = new Map();
+    let curCat = null;
+
+    for (const line of qLines) {
+      const t = line.trim();
+      const cm = t.match(/^<question_category id="(\d+)">/);
+      if (cm) { curCat = cm[1]; continue; }
+      if (curCat) {
+        const pm = t.match(/^<parent>(\d+)<\/parent>/);
+        if (pm) categoryParent.set(curCat, pm[1]);
+        const cx = t.match(/^<contextid>(\d+)<\/contextid>/);
+        if (cx) categoryContext.set(curCat, cx[1]);
+        const em = t.match(/^<question_bank_entry id="(\d+)">/);
+        if (em) entryToCategory.set(em[1], curCat);
+      }
+      if (t === '</question_category>') curCat = null;
+    }
+
+    push('  ' + categoryParent.size + ' categories, ' + entryToCategory.size + ' entries total');
+
+    // ── Build keep set ──
+    const keepCats = new Set();
+    for (const c of randomCategoryIds) keepCats.add(c);
+    for (const eid of directEntryIds) {
+      const c = entryToCategory.get(eid);
+      if (c) keepCats.add(c);
+    }
+
+    const toProcess = [...keepCats];
+    while (toProcess.length > 0) {
+      const c = toProcess.pop();
+      const p = categoryParent.get(c);
+      if (p && p !== '0' && !keepCats.has(p)) { keepCats.add(p); toProcess.push(p); }
+    }
+
+    // Keep empty container categories from kept contexts
+    const keptContextIds = new Set();
+    for (const catId of keepCats) {
+      const ctx = categoryContext.get(catId);
+      if (ctx) keptContextIds.add(ctx);
+    }
+    for (const qdir of quizDirs) {
+      const qpath = qdir + '/quiz.xml';
+      if (!srcFiles.has(qpath)) continue;
+      const qx = readText(srcFiles, qpath);
+      const ctxMatch = qx.match(/contextid="(\d+)"/);
+      if (ctxMatch) keptContextIds.add(ctxMatch[1]);
+    }
+    const catsWithEntries = new Set(entryToCategory.values());
+    for (const [catId, ctx] of categoryContext) {
+      if (keptContextIds.has(ctx) && !keepCats.has(catId) && !catsWithEntries.has(catId)) {
+        keepCats.add(catId);
+      }
+    }
+
+    // ── Rebuild questions.xml ──
+    push('Trimming questions...');
+    const output = ['<?xml version="1.0" encoding="UTF-8"?>', '<question_categories>'];
+    let inCat = false, keepCat = false, catBuf = [], catId2 = null;
+    let inEnt = false, entBuf = [], entId = null, entReal = false;
+    let keptEnt = 0, droppedEnt = 0, keptCats = 0;
+    const keptQIds = new Set();
+
+    for (const line of qLines) {
+      const t = line.trim();
+      const cm = t.match(/^<question_category id="(\d+)">/);
+      if (cm) { inCat = true; catId2 = cm[1]; keepCat = keepCats.has(catId2); catBuf = [line]; inEnt = false; entBuf = []; continue; }
+      if (t === '</question_category>' && inCat) {
+        if (keepCat) { catBuf.push(line); for (const l of catBuf) output.push(l); keptCats++; }
+        inCat = false; catId2 = null; keepCat = false; catBuf = []; continue;
+      }
+      if (!inCat || !keepCat) continue;
+
+      const em = t.match(/^<question_bank_entry id="(\d+)">/);
+      if (em) { inEnt = true; entId = em[1]; entBuf = [line]; entReal = false; continue; }
+      if (inEnt) {
+        entBuf.push(line);
+        const qt = t.match(/^<qtype>(\w+)<\/qtype>/);
+        if (qt && qt[1] !== 'random') entReal = true;
+        if (t === '</question_bank_entry>') {
+          if (directEntryIds.has(entId) || entReal) {
+            for (const l of entBuf) catBuf.push(l); keptEnt++;
+            for (const el of entBuf) {
+              const qi = el.trim().match(/^<question id="(\d+)">/);
+              if (qi) keptQIds.add(qi[1]);
+            }
+          } else { droppedEnt++; }
+          inEnt = false; entBuf = []; entId = null; continue;
+        }
+        continue;
+      }
+      catBuf.push(line);
+    }
+    output.push('</question_categories>');
+
+    push('  Kept ' + keptEnt + ' entries, dropped ' + droppedEnt);
+
+    // ── Filter files.xml ──
+    push('Filtering files...');
+    const keptHashes = new Set(['da39a3ee5e6b4b0d3255bfef95601890afd80709']);
+    const allXmlIds = new Set();
+    for (const l of output) { for (const m2 of l.matchAll(/id="(\d+)"/g)) allXmlIds.add(m2[1]); }
+    for (const q of keptQIds) allXmlIds.add(q);
+
+    let trimmedFiles;
+    let keptFiles = 0, droppedFiles = 0;
+
+    if (srcFiles.has('files.xml')) {
+      const fRaw = readText(srcFiles, 'files.xml');
+      const fLines = fRaw.split('\n');
+      const fOut = ['<?xml version="1.0" encoding="UTF-8"?>', '<files>'];
+      let inF = false, fBuf = [], fItem = null, fHash = null;
+
+      for (const line of fLines) {
+        const t = line.trim();
+        if (t.match(/^<file id="\d+">/)) { inF = true; fBuf = [line]; fItem = null; fHash = null; continue; }
+        if (inF) {
+          fBuf.push(line);
+          const im = t.match(/^<itemid>(\d+)<\/itemid>/); if (im) fItem = im[1];
+          const hm = t.match(/^<contenthash>([a-f0-9]+)<\/contenthash>/); if (hm) fHash = hm[1];
+          if (t === '</file>') {
+            if (fItem && allXmlIds.has(fItem)) { for (const l of fBuf) fOut.push(l); keptFiles++; if (fHash) keptHashes.add(fHash); }
+            else droppedFiles++;
+            inF = false; fBuf = []; continue;
+          }
+        }
+      }
+      fOut.push('</files>');
+      trimmedFiles = fOut.join('\n');
+    } else {
+      trimmedFiles = '<?xml version="1.0" encoding="UTF-8"?>\n<files>\n</files>';
+    }
+
+    push('  Kept ' + keptFiles + ' file records, dropped ' + droppedFiles);
+
+    // ── Strip for sharing ──
+    if (stripForSharing) {
+      push('Stripping course-specific data...');
+      let strippedCount = 0;
+
+      // Remove non-quiz activities
+      const actItems = listDir(srcFiles, 'activities');
+      for (const actDir of actItems) {
+        if (!quizDirs.some(qd => qd.endsWith(actDir))) {
+          removeDir(srcFiles, 'activities/' + actDir);
+          strippedCount++;
+        }
+      }
+      if (strippedCount > 0) push('  Removed ' + strippedCount + ' non-quiz activities');
+
+      // Remove course/ and sections/
+      for (const dir of ['course', 'sections']) {
+        if (hasPath(srcFiles, dir)) { removeDir(srcFiles, dir); push('  Removed ' + dir + '/'); }
+      }
+
+      // Remove junk files
+      for (const junk of ['.ARCHIVE_INDEX', 'moodle_backup.log']) {
+        srcFiles.delete(junk);
+      }
+
+      // Empty groups.xml
+      if (srcFiles.has('groups.xml')) {
+        writeText(srcFiles, 'groups.xml',
+          '<?xml version="1.0" encoding="UTF-8"?>\n<groups>\n  <groupcustomfields>\n  </groupcustomfields>\n  <groupings>\n    <groupingcustomfields>\n    </groupingcustomfields>\n  </groupings>\n</groups>');
+      }
+
+      // Empty roles.xml
+      if (srcFiles.has('roles.xml')) {
+        writeText(srcFiles, 'roles.xml',
+          '<?xml version="1.0" encoding="UTF-8"?>\n<roles_definition>\n</roles_definition>');
+      }
+
+      // Add completion.xml if missing
+      if (!srcFiles.has('completion.xml')) {
+        writeText(srcFiles, 'completion.xml',
+          '<?xml version="1.0" encoding="UTF-8"?>\n<course_completion>\n</course_completion>');
+      }
+
+      // Convert moodle_backup.xml to activity-type
+      let mbx = readText(srcFiles, 'moodle_backup.xml');
+      mbx = mbx.replace(/<type>course<\/type>/, '<type>activity</type>');
+      mbx = mbx.replace(/<sections>[\s\S]*?<\/sections>\s*/, '');
+      mbx = mbx.replace(/<course>[\s\S]*?<\/course>\s*/, '');
+      mbx = mbx.replace(/\s*<setting>\s*<level>section<\/level>[\s\S]*?<\/setting>/g, '');
+      const keptQuizIds = quizDirs.map(qd => qd.split('/')[1]);
+      mbx = mbx.replace(/<activity>[\s\S]*?<\/activity>/g, (match) => {
+        for (const qid of keptQuizIds) { if (match.includes(qid)) return match; }
+        return '';
+      });
+      mbx = mbx.replace(/\s*<setting>\s*<level>activity<\/level>[\s\S]*?<\/setting>/g, (match) => {
+        for (const qid of keptQuizIds) { if (match.includes(qid)) return match; }
+        return '';
+      });
+      mbx = mbx.replace(/\n{3,}/g, '\n\n');
+      writeText(srcFiles, 'moodle_backup.xml', mbx);
+
+      // Trim quiz inforef.xml
+      for (const qdir of quizDirs) {
+        const qInforef = qdir + '/inforef.xml';
+        if (!srcFiles.has(qInforef)) continue;
+        const orig = readText(srcFiles, qInforef);
+        const gradeRef = orig.match(/<grade_itemref>[\s\S]*?<\/grade_itemref>/);
+        const userRef = orig.match(/<userref>[\s\S]*?<\/userref>/);
+        let catRefs = '';
+        for (const catId of keepCats) {
+          catRefs += '    <question_category>\n      <id>' + catId + '</id>\n    </question_category>\n';
+        }
+        writeText(srcFiles, qInforef,
+          '<?xml version="1.0" encoding="UTF-8"?>\n<inforef>\n' +
+          (userRef ? '  ' + userRef[0] + '\n' : '') +
+          (gradeRef ? '  ' + gradeRef[0] + '\n' : '') +
+          '  <question_categoryref>\n' + catRefs + '  </question_categoryref>\n</inforef>');
+      }
+
+      push('  Converted to activity-type backup');
+    }
+
+    // ── Remove junk files (always) ──
+    for (const junk of ['.ARCHIVE_INDEX', 'moodle_backup.log']) {
+      srcFiles.delete(junk);
+    }
+
+    // ── Assemble output ──
+    push('Assembling trimmed backup...');
+    const outFiles = new Map();
+
+    for (const [path, data] of srcFiles) {
+      if (path === 'questions.xml' || path === 'files.xml') continue;
+      if (path.startsWith('files/')) continue;
+      outFiles.set(path, data);
+    }
+
+    outFiles.set('questions.xml', textEnc.encode(output.join('\n')));
+    outFiles.set('files.xml', textEnc.encode(trimmedFiles));
+
+    // Copy only needed content files
+    let copied = 0;
+    for (const [path, data] of srcFiles) {
+      if (!path.startsWith('files/')) continue;
+      const parts = path.split('/');
+      const hashName = parts[parts.length - 1];
+      if (keptHashes.has(hashName)) {
+        outFiles.set(path, data);
+        copied++;
+      }
+    }
+    push('  Copied ' + copied + ' content files');
+
+    push('Done!');
+
+    // ── Compute size breakdown ──
+    const breakdown = { before: inputSizes, after: {} };
+    for (const [path, data] of outFiles) {
+      const cat = categorizePath(path);
+      breakdown.after[cat] = (breakdown.after[cat] || 0) + data.length;
+    }
+
+    return {
+      success: true,
+      log,
+      outFiles,
+      stats: {
+        categoriesBefore: categoryParent.size,
+        categoriesAfter: keptCats,
+        entriesBefore: keptEnt + droppedEnt,
+        entriesAfter: keptEnt,
+      },
+      breakdown,
+    };
+  } catch (err) {
+    return { success: false, log, error: err.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const trimBtn = document.getElementById('trimBtn');
+const progress = document.getElementById('progress');
+const progressBar = document.getElementById('progressBar');
+const progressLog = document.getElementById('progressLog');
+const result = document.getElementById('result');
+
+let selectedFile = null;
+let lastBlobUrl = null;
+
+// ── File selection ──
+
+function selectFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = formatBytes(file.size);
+  fileInfo.classList.add('visible');
+  trimBtn.classList.add('visible');
+  document.getElementById('options').classList.add('visible');
+  result.classList.remove('visible');
+  progress.classList.remove('visible');
+}
+
+function clearFile() {
+  selectedFile = null;
+  fileInput.value = '';
+  fileInfo.classList.remove('visible');
+  trimBtn.classList.remove('visible');
+  document.getElementById('options').classList.remove('visible');
+  result.classList.remove('visible');
+  progress.classList.remove('visible');
+  document.getElementById('analytics').classList.remove('visible');
+  if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+}
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) selectFile(e.target.files[0]);
+});
+
+document.getElementById('fileRemove').addEventListener('click', (e) => {
+  e.stopPropagation();
+  clearFile();
+});
+
+dropzone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+});
+
+dropzone.addEventListener('dragleave', () => {
+  dropzone.classList.remove('dragover');
+});
+
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+});
+
+// ── Trim action ──
+
+trimBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  trimBtn.disabled = true;
+  trimBtn.textContent = 'Trimming...';
+  progress.classList.add('visible');
+  result.classList.remove('visible');
+  progressLog.innerHTML = '';
+  progressBar.style.width = '0%';
+  progressBar.style.background = '#3b82f6';
+  progressBar.classList.add('indeterminate');
+
+  const strip = document.getElementById('stripCheck').checked;
+  const inputSize = selectedFile.size;
+  const outputName = selectedFile.name.replace(/(\.\w+)$/, '_trimmed.mbz');
+
+  // Allow UI to update
+  await delay(50);
+
+  try {
+    // Read file
+    const rawBuf = await selectedFile.arrayBuffer();
+
+    // Decompress gzip
+    const tarData = await gunzip(new Uint8Array(rawBuf));
+
+    // Parse tar
+    const srcFiles = parseTar(tarData.buffer);
+
+    // Run trim engine
+    const data = trimMbz(srcFiles, { strip: strip });
+
+    progressBar.classList.remove('indeterminate');
+
+    if (data.success && data.outFiles) {
+      // Animate log
+      for (let i = 0; i < data.log.length; i++) {
+        await delay(80);
+        appendLog(data.log[i]);
+        progressBar.style.width = ((i + 1) / data.log.length * 100) + '%';
+      }
+      await delay(300);
+
+      // Create output .tar.gz
+      const outTar = createTar(data.outFiles);
+      const outGz = await gzip(outTar);
+      const outputSize = outGz.length;
+
+      // Create download blob
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      const blob = new Blob([outGz], { type: 'application/gzip' });
+      lastBlobUrl = URL.createObjectURL(blob);
+
+      progress.classList.remove('visible');
+      showSuccess({
+        inputSize: formatBytes(inputSize),
+        outputSize: formatBytes(outputSize),
+        reduction: (100 - (outputSize / inputSize * 100)).toFixed(1) + '%',
+        categoriesBefore: data.stats.categoriesBefore,
+        categoriesAfter: data.stats.categoriesAfter,
+        entriesBefore: data.stats.entriesBefore,
+        entriesAfter: data.stats.entriesAfter,
+      }, lastBlobUrl, outputName, data.breakdown);
+
+    } else if (data.success && data.noQuizzes) {
+      progressBar.classList.remove('indeterminate');
+      for (let i = 0; i < data.log.length; i++) {
+        await delay(80);
+        appendLog(data.log[i]);
+      }
+      progress.classList.remove('visible');
+      showError('No quiz activities found in this backup. Nothing to trim.');
+
+    } else {
+      progressBar.style.width = '100%';
+      progressBar.style.background = '#ef4444';
+      progress.classList.remove('visible');
+      showError(data.error || 'Unknown error');
+    }
+  } catch (err) {
+    progressBar.classList.remove('indeterminate');
+    progress.classList.remove('visible');
+    showError(err.message);
+  }
+
+  trimBtn.disabled = false;
+  trimBtn.textContent = 'Trim Backup';
+});
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function appendLog(text) {
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const colored = escaped
+    .replace(/^(\w[\w ]+\.{3})/, '<span class="step">$1</span>')
+    .replace(/Done!/, '<span class="done">Done!</span>')
+    .replace(/(\d[\d,.]*\s*(?:MB|KB|B|%))/g, '<span class="num">$1</span>')
+    .replace(/(\d+)\s*\u2192\s*(\d+)/g, '<span class="num">$1</span> \u2192 <span class="num">$2</span>');
+  progressLog.innerHTML += colored + '<br>';
+  progressLog.scrollTop = progressLog.scrollHeight;
+}
+
+let lastBreakdown = null;
+
+function showSuccess(s, blobUrl, outputName, breakdown) {
+  result.className = 'result visible success';
+  document.getElementById('resultIcon').textContent = '\u2705';
+  document.getElementById('resultTitle').textContent = 'Trim Complete!';
+
+  document.getElementById('resultStats').innerHTML =
+    '<div>' +
+    '  <div class="stat-label">File size</div>' +
+    '  <div class="stat-value">' +
+    '    <span class="old">' + s.inputSize + '</span>' +
+    '    <span class="arrow">\u2192</span>' +
+    '    <span class="new">' + s.outputSize + '</span>' +
+    '  </div>' +
+    '</div>' +
+    '<div>' +
+    '  <div class="stat-label">Reduction</div>' +
+    '  <div class="stat-value"><span class="new">' + s.reduction + '</span></div>' +
+    '</div>' +
+    '<div>' +
+    '  <div class="stat-label">Categories</div>' +
+    '  <div class="stat-value">' +
+    '    <span class="old">' + s.categoriesBefore + '</span>' +
+    '    <span class="arrow">\u2192</span>' +
+    '    <span class="new">' + s.categoriesAfter + '</span>' +
+    '  </div>' +
+    '</div>' +
+    '<div>' +
+    '  <div class="stat-label">Entries</div>' +
+    '  <div class="stat-value">' +
+    '    <span class="old">' + s.entriesBefore + '</span>' +
+    '    <span class="arrow">\u2192</span>' +
+    '    <span class="new">' + s.entriesAfter + '</span>' +
+    '  </div>' +
+    '</div>';
+
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = outputName;
+  a.className = 'open-btn';
+  a.innerHTML = '&#11015; Download Trimmed .mbz';
+
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'reset-btn';
+  resetBtn.textContent = 'Trim Another';
+  resetBtn.onclick = () => document.getElementById('fileRemove').click();
+
+  const analyticsBtn = document.createElement('button');
+  analyticsBtn.className = 'analytics-btn';
+  analyticsBtn.textContent = 'Size Breakdown';
+  analyticsBtn.onclick = () => toggleAnalytics(breakdown);
+
+  const actions = document.getElementById('resultActions');
+  actions.innerHTML = '';
+  actions.appendChild(a);
+  actions.appendChild(resetBtn);
+  actions.appendChild(analyticsBtn);
+
+  document.getElementById('errorMsg').textContent = '';
+  document.getElementById('analytics').classList.remove('visible');
+  lastBreakdown = breakdown;
+}
+
+function showError(msg) {
+  result.className = 'result visible error';
+  document.getElementById('resultIcon').textContent = '\u274C';
+  document.getElementById('resultTitle').textContent = 'Trim Failed';
+  document.getElementById('resultStats').innerHTML = '';
+  const actions = document.getElementById('resultActions');
+  actions.innerHTML = '';
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'reset-btn';
+  resetBtn.textContent = 'Try Again';
+  resetBtn.onclick = () => document.getElementById('fileRemove').click();
+  actions.appendChild(resetBtn);
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('analytics').classList.remove('visible');
+}
+
+function toggleAnalytics(breakdown) {
+  const panel = document.getElementById('analytics');
+  if (panel.classList.contains('visible')) {
+    panel.classList.remove('visible');
+    return;
+  }
+  renderAnalytics(panel, breakdown);
+  panel.classList.add('visible');
+}
+
+function renderAnalytics(panel, bd) {
+  const cats = ['questions', 'files_xml', 'content', 'activities', 'other'];
+  const totalBefore = cats.reduce((s, c) => s + (bd.before[c] || 0), 0);
+  const totalAfter = cats.reduce((s, c) => s + (bd.after[c] || 0), 0);
+  const removed = totalBefore - totalAfter;
+
+  // Build stacked bar
+  let barHtml = '<div class="breakdown-bar">';
+  for (const cat of cats) {
+    const after = bd.after[cat] || 0;
+    if (after > 0) {
+      const pct = (after / totalBefore * 100).toFixed(1);
+      barHtml += '<div style="width:' + pct + '%;background:' + CATEGORY_COLORS[cat] + '" title="' + CATEGORY_LABELS[cat] + ': ' + formatBytes(after) + '"></div>';
+    }
+  }
+  if (removed > 0) {
+    const pct = (removed / totalBefore * 100).toFixed(1);
+    barHtml += '<div style="width:' + pct + '%;background:#ef4444" title="Removed: ' + formatBytes(removed) + '"></div>';
+  }
+  barHtml += '</div>';
+
+  // Legend
+  let legendHtml = '<div class="bar-legend">';
+  for (const cat of cats) {
+    if ((bd.after[cat] || 0) > 0) {
+      const cls = cat === 'files_xml' ? 'files' : cat;
+      legendHtml += '<span class="lg-' + cls + '">' + CATEGORY_LABELS[cat].split(' (')[0] + '</span>';
+    }
+  }
+  if (removed > 0) legendHtml += '<span class="lg-removed">Removed</span>';
+  legendHtml += '</div>';
+
+  // Table
+  let tableHtml = '<table class="breakdown-table">';
+  tableHtml += '<tr><th>Component</th><th class="sz">Before</th><th class="sz">After</th><th class="sz">Saved</th></tr>';
+  for (const cat of cats) {
+    const before = bd.before[cat] || 0;
+    const after = bd.after[cat] || 0;
+    const saved = before - after;
+    if (before === 0 && after === 0) continue;
+    const cls = saved > 0 ? ' class="removed"' : ' class="kept"';
+    tableHtml += '<tr' + (saved > 0 ? ' class="removed"' : '') + '>' +
+      '<td>' + CATEGORY_LABELS[cat] + '</td>' +
+      '<td class="sz">' + formatBytes(before) + '</td>' +
+      '<td class="sz">' + formatBytes(after) + '</td>' +
+      '<td class="sz">' + (saved > 0 ? '-' + formatBytes(saved) : '--') + '</td>' +
+      '</tr>';
+  }
+  tableHtml += '<tr style="border-top:1px solid #475569;font-weight:600">' +
+    '<td>Total</td>' +
+    '<td class="sz">' + formatBytes(totalBefore) + '</td>' +
+    '<td class="sz">' + formatBytes(totalAfter) + '</td>' +
+    '<td class="sz" style="color:#4ade80">-' + formatBytes(removed) + '</td>' +
+    '</tr>';
+  tableHtml += '</table>';
+
+  panel.innerHTML = '<h3>Size Breakdown (uncompressed)</h3>' + barHtml + legendHtml + tableHtml;
+}
+</script>
+</body>
+</html>
